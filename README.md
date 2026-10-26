@@ -3,7 +3,7 @@ Aplicativo de controle financeiro pessoal desenvolvido em React Native, integrad
 
 ## Objetivo e equipe
 
-Projeto acadêmico de Wesley, Marcus, Eliezer e Davi. A base mobile utiliza Expo SDK 57, React Native e TypeScript. O backend Node.js/Express e MySQL da versão Web será reaproveitado futuramente; esta etapa contém somente navegação e telas placeholder, sem autenticação, API ou regras de negócio.
+Projeto acadêmico de Wesley, Marcus, Eliezer e Davi. A base mobile utiliza Expo SDK 57, React Native e TypeScript. O backend Node.js/Express e MySQL da versão Web será reaproveitado futuramente; a primeira etapa de autenticação está implementada usando as rotas de login e cadastro do backend. As telas financeiras continuam como placeholders e ainda não usam dados reais.
 
 ## Pré-requisitos
 
@@ -64,7 +64,7 @@ Cada integrante deve clonar o projeto em seu ambiente, manter sua própria branc
 
 Valide a alteração, faça commits na feature e publique com `git push -u origin feature/nome-da-tarefa`. Abra um Pull Request com destino **develop** e solicite revisão de outro integrante. Promoções para `main` devem passar pelo fluxo de revisão da equipe. Não use force push nas branches compartilhadas.
 
-Não versione `.env`, credenciais, bancos locais, `node_modules`, `.expo` ou builds. Não há configuração de API nem segredos nesta base.
+Não versione `.env`, credenciais, bancos locais, `node_modules`, `.expo` ou builds. Configure a URL da API em `.env.local` a partir de `.env.example`; nunca coloque chaves ou senhas em variáveis `EXPO_PUBLIC_`.
 
 ## Validação manual antes do PR
 
@@ -91,3 +91,7 @@ Em 21/10/2026, o usuário confirmou o teste físico no Samsung Galaxy A54 com Ex
 Na preparação inicial, `npm audit` reportou 15 alertas altos na cadeia Expo/Metro, relacionados a `braces` e `node-forge`. A tentativa de correção sem `--force` manteve esses alertas; a sugestão automática restante rebaixa o Expo para uma versão incompatível com esta base. Acompanhar as atualizações do ecossistema e reavaliar antes de publicar uma versão de produção. Não executar `npm audit fix --force` sem avaliar a compatibilidade.
 
 A instalação após a migração para SDK 57 também reportou 15 alertas altos. Essa contagem permanece como pendência de auditoria; não foi aplicada correção forçada nesta migração.
+
+## Autenticação Mobile
+
+Login e cadastro usam POST /api/login e POST /api/usuarios. Copie .env.example para .env.local e configure EXPO_PUBLIC_API_URL para o endereço acessível do backend. No celular, localhost aponta para o próprio aparelho; use o IPv4 do computador na mesma rede. Detalhes técnicos e conceitos para entrevistas estão em [docs/autenticacao-mobile.md](docs/autenticacao-mobile.md).
