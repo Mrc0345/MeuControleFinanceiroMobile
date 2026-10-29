@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useAuth } from '../auth/AuthContext';
-import { formatMoney, formatTransactionDate, loadDashboard, recentTransactions, type DashboardSummary } from '../services/dashboardService';
+import { useAuth } from '../context/AuthContext';
+import { getApiBaseUrl } from '../config/api';
+import { formatMoney, formatTransactionDate, getDashboardAccessMessage, loadDashboard, recentTransactions, type DashboardSummary } from '../services/dashboardService';
 import { colors } from '../theme';
 
 export function HomeScreen() {
@@ -12,6 +13,7 @@ export function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const token = session?.token;
+  const accessMessage = getDashboardAccessMessage(session);
   const refresh = () => setRevision((current) => current + 1);
 
   useFocusEffect(useCallback(() => {
@@ -19,15 +21,19 @@ export function HomeScreen() {
     setLoading(true);
     setSummary(null);
     setError(null);
-    if (!token) { setLoading(false); return () => controller.abort(); }
-    loadDashboard(process.env.EXPO_PUBLIC_API_URL, token, controller.signal)
+    if (accessMessage || !token) {
+      setError(accessMessage);
+      setLoading(false);
+      return () => controller.abort();
+    }
+    Promise.resolve().then(() => loadDashboard(getApiBaseUrl(), token, controller.signal))
       .then((data) => { if (!controller.signal.aborted) setSummary(data); })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar o resumo.');
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [token, revision]));
+  }, [token, accessMessage, revision]));
 
   return (
     <ScrollView contentContainerStyle={styles.content}
@@ -40,9 +46,9 @@ export function HomeScreen() {
       </View>}
       {error && <View style={styles.message}>
         <Text accessibilityRole="alert" style={styles.error}>{error}</Text>
-        <Pressable accessibilityRole="button" onPress={refresh} style={styles.button}>
+        {!accessMessage && <Pressable accessibilityRole="button" onPress={refresh} style={styles.button}>
           <Text style={styles.buttonText}>Tentar novamente</Text>
-        </Pressable>
+        </Pressable>}
       </View>}
       {summary && <>
         <View style={styles.card}>

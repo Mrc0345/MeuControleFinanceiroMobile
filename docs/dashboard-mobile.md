@@ -27,4 +27,4 @@ Ao perder o foco, atualizar ou desmontar a tela, a requisição anterior é canc
 
 ## Limites desta etapa
 
-Esta implementação usa a autenticação existente em feature/dashboard-financeiro. A autenticação e a migração para Expo 58 já integradas em origin/develop ainda precisam ser conciliadas com o login e cadastro locais antes do PR. A verificação do contrato local não comprova a disponibilidade de um backend em execução. Não foram adicionadas operações de cadastro ou edição de movimentações.
+Esta implementação usa o AuthContext compartilhado de origin/develop e Expo SDK 58. O Dashboard só consulta o backend com uma sessão real; no modo mock, mostra uma orientação para entrar no modo API, sem inventar valores financeiros. A URL é validada por src/config/api.ts, incluindo HTTPS obrigatório em produção. A verificação do contrato local não comprova a disponibilidade de um backend em execução. Não foram adicionadas operações de cadastro ou edição de movimentações.

@@ -13,6 +13,14 @@ export type DashboardSummary = {
   transacoes: DashboardTransaction[];
 };
 
+export function getDashboardAccessMessage(session: { source: 'api' | 'mock'; token: string | null } | null): string | null {
+  if (session?.source === 'mock') {
+    return 'Modo demonstração: o resumo financeiro exige uma conta real. Configure o modo API e entre novamente.';
+  }
+  if (!session?.token) return 'Entre novamente para acessar suas finanças.';
+  return null;
+}
+
 export class DashboardRequestError extends Error {
   readonly status?: number;
   constructor(message: string, status?: number) {

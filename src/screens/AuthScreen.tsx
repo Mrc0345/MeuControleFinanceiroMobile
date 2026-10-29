@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AuthFields, AuthMode } from '../auth/types';
 import { validateAuthFields } from '../auth/validation';
 import { register } from '../services/authService';
@@ -8,9 +9,10 @@ import { colors } from '../theme';
 
 const emptyFields: AuthFields = { nome: '', email: '', senha: '', confirmarSenha: '' };
 
-export function AuthScreen() {
-  const { signIn } = useAuth();
-  const [mode, setMode] = useState<AuthMode>('login');
+export function AuthScreen({ onReturnToLogin }: { onReturnToLogin?: (registeredEmail?: string) => void }) {
+  const { login: signIn } = useAuth();
+  const insets = useSafeAreaInsets();
+  const [mode, setMode] = useState<AuthMode>(onReturnToLogin ? 'register' : 'login');
   const [fields, setFields] = useState<AuthFields>(emptyFields);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +25,7 @@ export function AuthScreen() {
   };
 
   const changeMode = (nextMode: AuthMode) => {
+    if (nextMode === 'login' && onReturnToLogin) { onReturnToLogin(); return; }
     setMode(nextMode);
     setError(null);
     setNotice(null);
@@ -43,6 +46,7 @@ export function AuthScreen() {
         await signIn(fields.email, fields.senha);
       } else {
         await register(fields.nome, fields.email, fields.senha);
+        if (onReturnToLogin) { onReturnToLogin(fields.email.trim()); return; }
         setMode('login');
         setFields({ ...emptyFields, email: fields.email.trim() });
         setNotice('Cadastro concluído. Entre com seu e-mail e senha.');
@@ -56,7 +60,7 @@ export function AuthScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <Text accessibilityRole="header" style={styles.title}>Meu Controle</Text>
           <Text style={styles.subtitle}>{mode === 'login' ? 'Entre para acessar suas finanças.' : 'Crie sua conta para começar.'}</Text>

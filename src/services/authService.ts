@@ -1,82 +1,88 @@
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
-import type { AuthSession, AuthUser } from '../auth/types';
+import { getAuthMode } from '../config/auth';
+import { ApiError, httpRequest } from './httpClient';
+import type { AuthCredentials, AuthenticatedSession, LoginResponse } from '../types/auth';
 
-const SESSION_KEY = 'meu-controle.auth-session';
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/$/, '');
+const MOCK_CREDENTIALS = {
+  email: 'teste@meucontrole.com',
+  senha: '123456',
+} as const;
 
-type LoginResponse = { token?: unknown; usuario?: unknown; erro?: unknown };
-type RegisterResponse = { mensagem?: unknown; erro?: unknown };
+const MOCK_USER = {
+  id: 0,
+  nome: 'Usuário demonstração',
+  email: MOCK_CREDENTIALS.email,
+} as const;
 
-function getApiUrl(path: string): string {
-  if (!API_BASE_URL) {
-    throw new Error('Configure EXPO_PUBLIC_API_URL no arquivo .env.local para conectar ao backend.');
+export class MockCredentialsError extends Error {
+  constructor() {
+    super('E-mail ou senha inválidos.');
+    this.name = 'MockCredentialsError';
   }
-  return `${API_BASE_URL}/${path}`;
 }
 
-async function readResponse<T>(response: Response): Promise<T> {
-  const payload = await response.json().catch(() => ({})) as { erro?: unknown };
-  if (!response.ok) {
-    const message = typeof payload.erro === 'string' ? payload.erro : 'Não foi possível concluir a solicitação.';
-    throw new Error(message);
-  }
-  return payload as T;
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
-function isAuthUser(value: unknown): value is AuthUser {
+export function isLoginResponse(value: unknown): value is LoginResponse {
   if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Partial<AuthUser>;
-  return Number.isInteger(candidate.id) && typeof candidate.nome === 'string' && typeof candidate.email === 'string';
+
+  const candidate = value as Partial<LoginResponse>;
+  const usuario = candidate.usuario;
+  if (typeof usuario !== 'object' || usuario === null) return false;
+
+  return isNonEmptyString(candidate.mensagem)
+    && isNonEmptyString(candidate.token)
+    && Number.isInteger(usuario.id)
+    && isNonEmptyString(usuario.nome)
+    && isNonEmptyString(usuario.email);
 }
 
-export async function login(email: string, senha: string): Promise<AuthSession> {
-  const response = await fetch(getApiUrl('login'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: email.trim(), senha }),
-  });
-  const payload = await readResponse<LoginResponse>(response);
+export async function login(credentials: AuthCredentials): Promise<AuthenticatedSession> {
+  if (getAuthMode() === 'mock') {
+    if (credentials.email.trim() !== MOCK_CREDENTIALS.email || credentials.senha !== MOCK_CREDENTIALS.senha) {
+      throw new MockCredentialsError();
+    }
 
-  if (typeof payload.token !== 'string' || !isAuthUser(payload.usuario)) {
-    throw new Error('O backend respondeu em um formato inesperado.');
+    return {
+      version: 1,
+      source: 'mock',
+      token: null,
+      usuario: { ...MOCK_USER },
+    };
   }
 
-  return { token: payload.token, usuario: payload.usuario };
+  const response = await httpRequest<unknown>('/login', {
+    method: 'POST',
+    body: credentials,
+  });
+
+  if (!isLoginResponse(response.data)) {
+    throw new ApiError(
+      'A API retornou uma resposta de login inesperada.',
+      'invalid_response',
+      response.status,
+    );
+  }
+
+  return {
+    version: 1,
+    source: 'api',
+    token: response.data.token,
+    usuario: response.data.usuario,
+  };
 }
 
 export async function register(nome: string, email: string, senha: string): Promise<void> {
-  const response = await fetch(getApiUrl('usuarios'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nome: nome.trim(), email: email.trim(), senha }),
-  });
-  await readResponse<RegisterResponse>(response);
-}
-
-export async function saveSession(session: AuthSession): Promise<void> {
-  if (Platform.OS === 'web') return;
-  await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session));
-}
-
-export async function restoreSession(): Promise<AuthSession | null> {
-  if (Platform.OS === 'web') return null;
-  const raw = await SecureStore.getItemAsync(SESSION_KEY);
-  if (!raw) return null;
-
-  try {
-    const value: unknown = JSON.parse(raw);
-    if (typeof value !== 'object' || value === null) throw new Error('Sessão inválida');
-    const candidate = value as Partial<AuthSession>;
-    if (typeof candidate.token !== 'string' || !isAuthUser(candidate.usuario)) throw new Error('Sessão inválida');
-    return { token: candidate.token, usuario: candidate.usuario };
-  } catch {
-    await clearSession();
-    return null;
+  if (getAuthMode() !== 'api') {
+    throw new Error('O cadastro exige o modo API e uma conexão com o backend.');
   }
-}
-
-export async function clearSession(): Promise<void> {
-  if (Platform.OS === 'web') return;
-  await SecureStore.deleteItemAsync(SESSION_KEY);
+  const response = await httpRequest<unknown>('/usuarios', {
+    method: 'POST',
+    body: { nome: nome.trim(), email: email.trim(), senha },
+  });
+  if (typeof response.data !== 'object' || response.data === null
+    || !('mensagem' in response.data) || !isNonEmptyString(response.data.mensagem)) {
+    throw new ApiError('A API retornou uma resposta de cadastro inesperada.', 'invalid_response', response.status);
+  }
 }
