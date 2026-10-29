@@ -95,3 +95,7 @@ A instalação após a migração para SDK 57 também reportou 15 alertas altos.
 ## Autenticação Mobile
 
 Login e cadastro usam POST /api/login e POST /api/usuarios. Copie .env.example para .env.local e configure EXPO_PUBLIC_API_URL para o endereço acessível do backend. No celular, localhost aponta para o próprio aparelho; use o IPv4 do computador na mesma rede. Detalhes técnicos e conceitos para entrevistas estão em [docs/autenticacao-mobile.md](docs/autenticacao-mobile.md).
+
+## Dashboard Mobile
+
+A tela Início exibe saldo, receitas, despesas e as cinco movimentações mais recentes da conta autenticada, consultando GET /api/transacoes com o JWT. Inclui carregamento, conta vazia, erro e atualização ao retornar à aba ou puxar para baixo. Consulte o contrato, as decisões técnicas e o roteiro de teste em [docs/dashboard-mobile.md](docs/dashboard-mobile.md). Os totais abrangem todo o período cadastrado.
