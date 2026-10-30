@@ -117,3 +117,16 @@ test('secure storage failures are reported rather than treated as a successful l
   secureStore.setItemAsync = async () => { throw new Error('Storage unavailable'); };
   await assert.rejects(storage.storeSession({ version: 1, source: 'api', token: 'token', usuario: user }), { operation: 'save' });
 });
+
+test('secure storage rejects invalid user IDs before writing a session', async (t) => {
+  const { storage, stored } = setup(t);
+  for (const id of [NaN, Infinity, -Infinity, 1.5, '7', null, undefined]) {
+    await assert.rejects(storage.storeSession({
+      version: 1, source: 'api', token: 'example-jwt', usuario: { ...user, id },
+    }), { operation: 'save' });
+    assert.equal(stored.size, 0);
+  }
+  const session = { version: 1, source: 'api', token: 'example-jwt', usuario: user };
+  await storage.storeSession(session);
+  assert.deepEqual(await storage.getStoredSession(), session);
+});

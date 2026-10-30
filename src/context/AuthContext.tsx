@@ -79,19 +79,10 @@ function isExpired(token: string): boolean {
 }
 
 function operationError(error: unknown, operation: AuthErrorOperation): AuthError {
-  if (error instanceof ApiError) {
-    return { operation, message: error.message };
-  }
-
-  if (error instanceof SessionStorageError) {
-    return { operation, message: error.message };
-  }
-
-  if (error instanceof MockCredentialsError) {
-    return { operation, message: error.message };
-  }
-
-  if (error instanceof AuthModeConfigurationError) {
+  if (error instanceof ApiError
+    || error instanceof SessionStorageError
+    || error instanceof MockCredentialsError
+    || error instanceof AuthModeConfigurationError) {
     return { operation, message: error.message };
   }
 
@@ -133,13 +124,8 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
           return;
         }
 
-        if (storedSession.source !== authMode) {
-          await clearStoredSession();
-          if (isMounted.current) setAuthState(unauthenticatedState());
-          return;
-        }
-
-        if (storedSession.source === 'api' && isExpired(storedSession.token)) {
+        if (storedSession.source !== authMode
+          || (storedSession.source === 'api' && isExpired(storedSession.token))) {
           await clearStoredSession();
           if (isMounted.current) setAuthState(unauthenticatedState());
           return;

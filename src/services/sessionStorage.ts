@@ -28,7 +28,6 @@ function isAuthenticatedSession(value: unknown): value is AuthenticatedSession {
   if (typeof usuario !== 'object' || usuario === null) return false;
 
   if (candidate.version !== 1
-    || Number.isNaN(usuario.id)
     || !Number.isInteger(usuario.id)
     || !isNonEmptyString(usuario.nome)
     || !isNonEmptyString(usuario.email)) {
