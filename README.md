@@ -83,7 +83,7 @@ src/
   types/            # contratos de autenticação e navegação
 ```
 
-O `AuthGate` impede o acesso à navegação financeira sem uma sessão válida. O [LogoutButton](./src/components/LogoutButton.tsx) chama o logout do contexto compartilhado. `LoginScreen` permite abrir o cadastro em `AuthScreen` no modo API; após criar a conta, retorna ao login com o e-mail preenchido.
+O `AuthGate` impede o acesso à navegação financeira sem uma sessão válida. O [LogoutButton](./src/components/LogoutButton.tsx) chama o logout do contexto compartilhado. `LoginScreen` permite abrir o cadastro em `RegisterScreen` no modo API; após criar a conta, retorna ao login com o e-mail preenchido.
 
 ## Dashboard e cadastro
 

@@ -3,7 +3,7 @@
 ## Fluxo implementado
 
 1. Ao abrir o app, `AuthProvider` em `src/context/AuthContext.tsx` tenta restaurar a sessão versionada do armazenamento seguro. Enquanto isso, `AuthGate` mostra um indicador de carregamento. Sessões incompatíveis com o modo atual, corrompidas ou com JWT expirado são removidas; erros de armazenamento bloqueiam o acesso e permitem tentar novamente.
-2. Sem sessão, aparece `LoginScreen`. No modo API, o link Cadastre-se abre `AuthScreen`. No modo mock, o login demonstrativo não faz requisições e não oferece cadastro.
+2. Sem sessão, aparece `LoginScreen`. No modo API, o link Cadastre-se abre `RegisterScreen`. No modo mock, o login demonstrativo não faz requisições e não oferece cadastro.
 3. No cadastro, o app valida nome, formato básico do e-mail, campos obrigatórios e confirmação de senha. Em seguida envia `{ nome, email, senha }` para `POST /api/usuarios`.
 4. O backend grava senha com bcrypt e retorna sucesso ou um erro. O endpoint de cadastro atual não gera token, então o app volta ao login.
 5. No login, o app envia `{ email, senha }` para `POST /api/login`. O backend compara a senha com o hash salvo e retorna um JWT de 24 horas mais o objeto do usuário.
@@ -18,7 +18,7 @@ O contrato do backend prevê JWT de 24 horas. Ainda não existe fluxo de refresh
 ## Arquivos e responsabilidades
 
 - `src/screens/LoginScreen.tsx`: login da base compartilhada e acesso ao cadastro.
-- `src/screens/AuthScreen.tsx`: formulário de cadastro e retorno ao login com e-mail preenchido.
+- `src/screens/RegisterScreen.tsx`: formulário de cadastro e retorno ao login com e-mail preenchido.
 - `src/auth/validation.ts`: validações puras dos campos, sem depender da interface.
 - `src/services/authService.ts`: login API ou mock e cadastro pelo cliente HTTP compartilhado.
 - `src/services/sessionStorage.ts`: validação e armazenamento seguro de sessões versionadas.

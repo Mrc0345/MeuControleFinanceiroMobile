@@ -1,38 +1,26 @@
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { AuthFields, AuthMode } from '../auth/types';
+import type { AuthFields } from '../auth/types';
 import { validateAuthFields } from '../auth/validation';
 import { register } from '../services/authService';
 import { colors } from '../theme';
 
 const emptyFields: AuthFields = { nome: '', email: '', senha: '', confirmarSenha: '' };
 
-export function AuthScreen({ onReturnToLogin }: { onReturnToLogin?: (registeredEmail?: string) => void }) {
-  const { login: signIn } = useAuth();
+export function RegisterScreen({ onReturnToLogin }: { onReturnToLogin: (registeredEmail?: string) => void }) {
   const insets = useSafeAreaInsets();
-  const [mode, setMode] = useState<AuthMode>(onReturnToLogin ? 'register' : 'login');
   const [fields, setFields] = useState<AuthFields>(emptyFields);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const updateField = (key: keyof AuthFields, value: string) => {
     setFields((current) => ({ ...current, [key]: value }));
     setError(null);
-    setNotice(null);
-  };
-
-  const changeMode = (nextMode: AuthMode) => {
-    if (nextMode === 'login' && onReturnToLogin) { onReturnToLogin(); return; }
-    setMode(nextMode);
-    setError(null);
-    setNotice(null);
   };
 
   const submit = async () => {
-    const validationError = validateAuthFields(mode, fields);
+    const validationError = validateAuthFields('register', fields);
     if (validationError) {
       setError(validationError);
       return;
@@ -40,17 +28,9 @@ export function AuthScreen({ onReturnToLogin }: { onReturnToLogin?: (registeredE
 
     setIsSubmitting(true);
     setError(null);
-    setNotice(null);
     try {
-      if (mode === 'login') {
-        await signIn(fields.email, fields.senha);
-      } else {
-        await register(fields.nome, fields.email, fields.senha);
-        if (onReturnToLogin) { onReturnToLogin(fields.email.trim()); return; }
-        setMode('login');
-        setFields({ ...emptyFields, email: fields.email.trim() });
-        setNotice('Cadastro concluído. Entre com seu e-mail e senha.');
-      }
+      await register(fields.nome, fields.email, fields.senha);
+      onReturnToLogin(fields.email.trim());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível conectar ao serviço.');
     } finally {
@@ -63,9 +43,9 @@ export function AuthScreen({ onReturnToLogin }: { onReturnToLogin?: (registeredE
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <Text accessibilityRole="header" style={styles.title}>Meu Controle</Text>
-          <Text style={styles.subtitle}>{mode === 'login' ? 'Entre para acessar suas finanças.' : 'Crie sua conta para começar.'}</Text>
+          <Text style={styles.subtitle}>Crie sua conta para começar.</Text>
 
-          {mode === 'register' && <TextInput
+          <TextInput
             accessibilityLabel="Nome"
             autoCapitalize="words"
             autoComplete="name"
@@ -74,7 +54,7 @@ export function AuthScreen({ onReturnToLogin }: { onReturnToLogin?: (registeredE
             returnKeyType="next"
             style={styles.input}
             value={fields.nome}
-          />}
+          />
 
           <TextInput
             accessibilityLabel="E-mail"
@@ -91,16 +71,16 @@ export function AuthScreen({ onReturnToLogin }: { onReturnToLogin?: (registeredE
           <TextInput
             accessibilityLabel="Senha"
             autoCapitalize="none"
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            autoComplete="new-password"
             onChangeText={(value) => updateField('senha', value)}
             placeholder="Senha"
-            returnKeyType={mode === 'register' ? 'next' : 'done'}
+            returnKeyType="next"
             secureTextEntry
             style={styles.input}
-            textContentType={mode === 'login' ? 'password' : 'newPassword'}
+            textContentType="newPassword"
             value={fields.senha}
           />
-          {mode === 'register' && <TextInput
+          <TextInput
             accessibilityLabel="Confirmar senha"
             autoCapitalize="none"
             autoComplete="new-password"
@@ -112,19 +92,18 @@ export function AuthScreen({ onReturnToLogin }: { onReturnToLogin?: (registeredE
             style={styles.input}
             textContentType="newPassword"
             value={fields.confirmarSenha}
-          />}
+          />
 
           {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-          {!!notice && <Text accessibilityRole="alert" style={styles.notice}>{notice}</Text>}
 
           <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={() => void submit()} style={[styles.primaryButton, isSubmitting && styles.disabled]}>
-            {isSubmitting ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.primaryText}>{mode === 'login' ? 'Entrar' : 'Criar conta'}</Text>}
+            {isSubmitting ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.primaryText}>Criar conta</Text>}
           </Pressable>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>{mode === 'login' ? 'Ainda não tem conta?' : 'Já tem uma conta?'}</Text>
-            <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={() => changeMode(mode === 'login' ? 'register' : 'login')}>
-              <Text style={styles.link}>{mode === 'login' ? 'Cadastre-se' : 'Entrar'}</Text>
+            <Text style={styles.switchText}>Já tem uma conta?</Text>
+            <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={() => onReturnToLogin()}>
+              <Text style={styles.link}>Entrar</Text>
             </Pressable>
           </View>
         </View>
@@ -144,7 +123,6 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.65 },
   primaryText: { color: colors.surface, fontSize: 16, fontWeight: '700' },
   error: { color: '#B42318', fontSize: 14, lineHeight: 20 },
-  notice: { color: colors.primary, fontSize: 14, lineHeight: 20 },
   switchRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6 },
   switchText: { color: colors.muted, fontSize: 14 },
   link: { color: colors.primary, fontSize: 14, fontWeight: '700' },

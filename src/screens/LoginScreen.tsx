@@ -15,7 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { MockCredentialsError } from '../services/authService';
 import { ApiError } from '../services/httpClient';
 import { colors } from '../theme';
-import { AuthScreen } from './AuthScreen';
+import { RegisterScreen } from './RegisterScreen';
 
 function loginErrorMessage(error: unknown): string {
   if (error instanceof MockCredentialsError) return error.message;
@@ -62,7 +62,7 @@ export function LoginScreen() {
   const visibleError = validationError ?? contextError;
 
   if (showRegistration && authMode === 'api') {
-    return <AuthScreen onReturnToLogin={(registeredEmail) => {
+    return <RegisterScreen onReturnToLogin={(registeredEmail) => {
       setShowRegistration(false);
       setValidationError(null);
       if (registeredEmail) {
