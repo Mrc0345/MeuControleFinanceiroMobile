@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from './sessionStore';
 import type { AuthenticatedSession } from '../types/auth';
 
 export const SESSION_STORAGE_KEY = 'MeuControleFinanceiroMobile.session.v1';

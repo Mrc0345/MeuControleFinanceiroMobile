@@ -4,7 +4,7 @@ const ts = require('typescript');
 
 // Exercise the actual service modules in Node, replacing only native storage.
 // Transpilation supports the parameter properties used by the shared HTTP client.
-exports.createLoader = ({ development = true, secureStore }) => {
+exports.createLoader = ({ development = true, secureStore, platform = 'native' }) => {
   const cache = new Map();
   function load(filename) {
     const absolute = path.resolve(__dirname, '../..', filename);
@@ -16,7 +16,10 @@ exports.createLoader = ({ development = true, secureStore }) => {
     }).outputText;
     const localRequire = (specifier) => {
       if (specifier === 'expo-secure-store') return secureStore;
-      if (specifier.startsWith('.')) return load(path.resolve(path.dirname(absolute), `${specifier}.ts`));
+      if (specifier.startsWith('.')) {
+        const target = path.resolve(path.dirname(absolute), specifier);
+        return load(platform === 'web' && fs.existsSync(`${target}.web.ts`) ? `${target}.web.ts` : `${target}.ts`);
+      }
       return require(specifier);
     };
     new Function('require', 'module', 'exports', '__DEV__', output)(localRequire, module, module.exports, development);
