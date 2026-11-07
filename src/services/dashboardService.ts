@@ -21,12 +21,22 @@ export function getDashboardAccessMessage(session: { source: 'api' | 'mock'; tok
   return null;
 }
 
+export type DashboardErrorKind = 'http' | 'configuration' | 'connection' | 'timeout' | 'invalid_response';
+export type DashboardFailure = {
+  kind: 'session' | DashboardErrorKind;
+  title: string;
+  message: string;
+  action: 'retry' | 'signOut' | 'checkConfiguration';
+};
+
 export class DashboardRequestError extends Error {
   readonly status?: number;
-  constructor(message: string, status?: number) {
+  readonly kind: DashboardErrorKind;
+  constructor(message: string, status?: number, kind: DashboardErrorKind = 'http') {
     super(message);
     this.name = 'DashboardRequestError';
     this.status = status;
+    this.kind = kind;
   }
 }
 
@@ -90,10 +100,12 @@ export function formatTransactionDate(value: string): string {
 }
 
 export async function loadDashboard(baseUrl: string | undefined, token: string, signal: AbortSignal): Promise<DashboardSummary> {
-  if (!baseUrl?.trim()) throw new Error('Configure EXPO_PUBLIC_API_URL para conectar ao backend.');
-  const url = new URL(baseUrl.trim());
+  if (!baseUrl?.trim()) throw new DashboardRequestError('Configure EXPO_PUBLIC_API_URL para conectar ao backend.', undefined, 'configuration');
+  let url: URL;
+  try { url = new URL(baseUrl.trim()); }
+  catch { throw new DashboardRequestError('Configure uma URL válida.', undefined, 'configuration'); }
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
-    throw new Error('Configure uma URL HTTP ou HTTPS da API, sem credenciais, parâmetros ou fragmentos.');
+    throw new DashboardRequestError('Configure uma URL HTTP ou HTTPS da API, sem credenciais, parâmetros ou fragmentos.', undefined, 'configuration');
   }
   if (!token.trim()) throw new DashboardRequestError('Entre novamente para acessar suas finanças.', 401);
   const controller = new AbortController();
@@ -109,14 +121,43 @@ export async function loadDashboard(baseUrl: string | undefined, token: string, 
     });
     if (response.status === 401) throw new DashboardRequestError('Sua sessão expirou ou é inválida. Saia e entre novamente.', 401);
     if (!response.ok) throw new DashboardRequestError(`Não foi possível carregar o resumo (HTTP ${response.status}).`, response.status);
-    return parseDashboardResponse(await response.json());
+    try { return parseDashboardResponse(await response.json()); }
+    catch { throw new DashboardRequestError('Não foi possível validar os valores recebidos.', response.status, 'invalid_response'); }
   } catch (error) {
     if (signal.aborted) throw error;
-    if (timedOut) throw new Error('A API não respondeu em 15 segundos. Tente novamente.');
-    if (error instanceof TypeError) throw new Error('Não foi possível conectar à API. Verifique a rede e o backend.');
+    if (timedOut) throw new DashboardRequestError('A API não respondeu em 15 segundos. Tente novamente.', undefined, 'timeout');
+    if (error instanceof TypeError) throw new DashboardRequestError('Não foi possível conectar à API. Verifique a rede e o backend.', undefined, 'connection');
     throw error;
   } finally {
     clearTimeout(timer);
     signal.removeEventListener('abort', cancel);
   }
+}
+
+/** Presentation is separate from diagnostics: never expose server text or technical errors. */
+export function getDashboardFailure(error: unknown): DashboardFailure {
+  if (error instanceof DashboardRequestError) {
+    if (error.status === 401 || error.status === 403) return {
+      kind: 'session', title: 'Entre novamente',
+      message: 'Não foi possível autorizar a consulta. Saia e entre com sua conta para continuar.', action: 'signOut',
+    };
+    if (error.kind === 'configuration') return {
+      kind: 'configuration', title: 'A conexão precisa ser configurada',
+      message: 'Peça à equipe responsável pelo aplicativo para revisar o endereço de conexão e reiniciar o aplicativo. Depois, confira a conexão novamente.', action: 'checkConfiguration',
+    };
+    if (error.kind === 'connection') return {
+      kind: 'connection', title: 'Não foi possível conectar',
+      message: 'Confira sua conexão com a internet ou com a rede local e tente novamente.', action: 'retry',
+    };
+    if (error.kind === 'timeout') return {
+      kind: 'timeout', title: 'A consulta demorou mais que o esperado',
+      message: 'O serviço não respondeu a tempo. Aguarde um momento e tente novamente.', action: 'retry',
+    };
+    if (error.kind === 'invalid_response') return {
+      kind: 'invalid_response', title: 'Não foi possível conferir os valores',
+      message: 'Os dados recebidos não puderam ser validados. Tente atualizar novamente; se continuar, avise a equipe responsável pelo aplicativo.', action: 'retry',
+    };
+  }
+  return { kind: 'http', title: 'Resumo indisponível no momento',
+    message: 'Não foi possível consultar suas movimentações. Aguarde um momento e tente novamente.', action: 'retry' };
 }
