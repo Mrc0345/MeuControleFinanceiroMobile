@@ -1,4 +1,4 @@
-import { PlaceholderScreen } from '../components/PlaceholderScreen';
+import { TransactionsManager } from '../components/TransactionsManager';
 export function IncomeScreen() {
-  return <PlaceholderScreen title="Receitas" description="Este espaço receberá a consulta e o cadastro de receitas." />;
+  return <TransactionsManager tipo="receita" />;
 }

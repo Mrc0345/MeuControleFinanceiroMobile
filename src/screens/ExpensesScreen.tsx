@@ -1,4 +1,4 @@
-import { PlaceholderScreen } from '../components/PlaceholderScreen';
+import { TransactionsManager } from '../components/TransactionsManager';
 export function ExpensesScreen() {
-  return <PlaceholderScreen title="Despesas" description="Este espaço receberá a consulta e o cadastro de despesas." />;
+  return <TransactionsManager tipo="despesa" />;
 }

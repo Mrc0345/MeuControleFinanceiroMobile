@@ -1,4 +1,4 @@
-import { PlaceholderScreen } from '../components/PlaceholderScreen';
+import { TransactionsManager } from '../components/TransactionsManager';
 export function TransactionsScreen() {
-  return <PlaceholderScreen title="Movimentações" description="Este espaço receberá o histórico de movimentações financeiras." />;
+  return <TransactionsManager />;
 }
