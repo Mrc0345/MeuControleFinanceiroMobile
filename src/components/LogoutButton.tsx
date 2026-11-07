@@ -25,6 +25,7 @@ export function LogoutButton() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Sair"
+        accessibilityState={{ disabled: isLoggingOut, busy: isLoggingOut }}
         disabled={isLoggingOut}
         onPress={handleLogout}
         style={({ pressed }) => [styles.button, pressed && styles.pressed]}
@@ -41,7 +42,7 @@ export function LogoutButton() {
 
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: 8 },
-  button: { minWidth: 52, minHeight: 36, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  button: { minWidth: 52, minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   pressed: { opacity: 0.65 },
   label: { color: colors.primary, fontWeight: '700' },
   error: { maxWidth: 120, color: '#B42318', fontSize: 12, textAlign: 'right' },
