@@ -40,6 +40,9 @@ export async function httpRequest<T = unknown>(
   }
 
   const controller = new AbortController();
+  const cancel = () => controller.abort();
+  options.signal?.addEventListener('abort', cancel);
+  if (options.signal?.aborted) cancel();
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
@@ -47,6 +50,7 @@ export async function httpRequest<T = unknown>(
   }, timeoutMs);
 
   try {
+    if (controller.signal.aborted) throw new Error('Requisição cancelada.');
     const headers = new Headers(options.headers);
     if (!headers.has('Accept')) headers.set('Accept', 'application/json, text/plain');
     if (body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
@@ -67,10 +71,12 @@ export async function httpRequest<T = unknown>(
     if (!response.ok) throw new ApiError(errorMessage(data, response.status), 'http', response.status, data);
     return { status: response.status, data: data as T };
   } catch (error) {
+    if (options.signal?.aborted) throw error;
     if (timedOut) throw new ApiError(`A API não respondeu em ${timeoutMs} ms.`, 'timeout');
     if (error instanceof ApiError) throw error;
     throw new ApiError('Não foi possível conectar à API. Verifique a URL, a rede e o servidor.', 'connection');
   } finally {
     clearTimeout(timer);
+    options.signal?.removeEventListener('abort', cancel);
   }
 }

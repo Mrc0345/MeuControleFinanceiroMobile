@@ -10,4 +10,5 @@ export interface HttpRequestOptions {
   /** Dados serializáveis em JSON. */
   body?: unknown;
   timeoutMs?: number;
+  signal?: AbortSignal;
 }
