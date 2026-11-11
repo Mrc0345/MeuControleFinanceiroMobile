@@ -4,9 +4,10 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { getApiBaseUrl } from '../config/api';
-import { DashboardRequestError, formatMoney, formatTransactionDate, getDashboardFailure, loadDashboard, recentTransactions, type DashboardFailure, type DashboardSummary } from '../services/dashboardService';
+import { DashboardRequestError, getDashboardFailure, loadDashboard, type DashboardFailure, type DashboardSummary } from '../services/dashboardService';
 import type { RootTabParamList } from '../types/navigation';
 import { colors } from '../theme';
+import { DashboardActions, DashboardSummary as DashboardSummaryView } from '../components/DashboardSummary';
 
 type Snapshot = { token: string; summary: DashboardSummary; updatedAt: Date };
 
@@ -23,7 +24,7 @@ export function HomeScreen() {
   const { session, logout, error: authError } = useAuth();
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList, 'Inicio'>>();
   const { width, fontScale } = useWindowDimensions();
-  const stacked = width < 380 || fontScale > 1.2;
+  const onNavigate = (destination: keyof RootTabParamList) => navigation.navigate(destination);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [failure, setFailure] = useState<DashboardFailure | null>(null);
@@ -77,8 +78,10 @@ export function HomeScreen() {
   return <ScrollView contentContainerStyle={styles.content}
     refreshControl={<RefreshControl refreshing={loading && !!token} onRefresh={refresh} colors={[colors.primary]} />}>
     <View style={styles.body}>
-      <Text accessibilityRole="header" style={styles.title}>Resumo financeiro</Text>
-      <Text style={styles.subtitle}>Olá, {session?.usuario.nome}. Acompanhe suas movimentações cadastradas.</Text>
+      <View style={styles.introduction}>
+        <Text accessibilityRole="header" style={styles.title}>Resumo financeiro</Text>
+        <Text style={styles.subtitle}>Olá, {session?.usuario.nome}. Acompanhe suas movimentações cadastradas.</Text>
+      </View>
 
       {demo ? <View style={styles.notice}>
         <Text accessibilityRole="header" style={styles.heading}>Você está na demonstração</Text>
@@ -88,11 +91,6 @@ export function HomeScreen() {
         <Text style={styles.copy}>Entre novamente para consultar suas movimentações.</Text>
         <Action label="Voltar ao login" disabled={leaving} onPress={() => void leave()} />
       </View> : <>
-        <View style={styles.actions}>
-          <Action label="Receitas" onPress={() => navigation.navigate('Receitas')} />
-          <Action label="Despesas" secondary onPress={() => navigation.navigate('Despesas')} />
-          <Action label="Histórico" secondary onPress={() => navigation.navigate('Movimentacoes')} />
-        </View>
         <View style={styles.updateRow}>
           <View style={styles.updateStatus}>
             {loading && <ActivityIndicator color={colors.primary} accessibilityLabel="Atualizando resumo" />}
@@ -107,48 +105,9 @@ export function HomeScreen() {
             ? <Action label="Sair para entrar novamente" disabled={leaving} onPress={() => void leave()} />
             : <Action label={failure.action === 'checkConfiguration' ? 'Conferir conexão novamente' : 'Tentar novamente'} disabled={loading} onPress={refresh} />}
         </View>}
-        {summary && <>
-          <View style={styles.card}>
-            <Text accessibilityRole="header" style={styles.heading}>Saldo das movimentações</Text>
-            <Text style={styles.period}>Todo o período</Text>
-            <Text style={[styles.balance, summary.saldo < 0 && styles.expense]}>{formatMoney(summary.saldo)}</Text>
-            <Text style={styles.subtitle}>Receitas menos despesas cadastradas. Este valor não representa o saldo da sua conta bancária.</Text>
-          </View>
-          <View style={[styles.totals, stacked && styles.stacked]}>
-            <View style={[styles.card, styles.total, stacked && styles.stackedBasis]} accessible accessibilityLabel={`Receitas, todo o período, ${formatMoney(summary.receitas)}`}>
-              <Text style={styles.label}>Receitas</Text>
-              <Text style={[styles.amount, styles.income]}>{formatMoney(summary.receitas)}</Text>
-              <Text style={styles.period}>Todo o período</Text>
-            </View>
-            <View style={[styles.card, styles.total, stacked && styles.stackedBasis]} accessible accessibilityLabel={`Despesas, todo o período, ${formatMoney(summary.despesas)}`}>
-              <Text style={styles.label}>Despesas</Text>
-              <Text style={[styles.amount, styles.expense]}>{formatMoney(summary.despesas)}</Text>
-              <Text style={styles.period}>Todo o período</Text>
-            </View>
-          </View>
-          {summary.transacoes.length === 0 ? <View style={styles.notice}>
-            <Text accessibilityRole="header" style={styles.heading}>Comece pela primeira movimentação</Text>
-            <Text style={styles.copy}>Abra Receitas ou Despesas e toque em Nova receita ou Nova despesa para cadastrar um lançamento. Ele aparecerá aqui após ser salvo.</Text>
-          </View> : <>
-            <View style={styles.sectionHeader}>
-              <Text accessibilityRole="header" style={styles.section}>Últimas movimentações</Text>
-              <Action label="Ver todas" secondary onPress={() => navigation.navigate('Movimentacoes')} />
-            </View>
-            <View style={styles.list}>
-              {recentTransactions(summary.transacoes).map(item => <View key={item.id}
-                accessible accessibilityLabel={`${item.tipo === 'receita' ? 'Receita' : 'Despesa'}, ${item.descricao}, ${formatMoney(item.valor)}, ${formatTransactionDate(item.data)}`}
-                style={[styles.transaction, stacked && styles.stacked]}>
-                <View style={[styles.transactionDescription, stacked && styles.stackedBasis]}>
-                  <Text style={styles.description}>{item.descricao}</Text>
-                  <Text style={styles.subtitle}>{item.tipo === 'receita' ? 'Receita' : 'Despesa'} · {formatTransactionDate(item.data)}</Text>
-                </View>
-                <Text style={[styles.transactionAmount, item.tipo === 'receita' ? styles.income : styles.expense, stacked && styles.stackedAmount]}>
-                  {item.tipo === 'receita' ? '+' : '−'} {formatMoney(item.valor)}
-                </Text>
-              </View>)}
-            </View>
-          </>}
-        </>}
+        {summary
+          ? <DashboardSummaryView summary={summary} width={width} fontScale={fontScale} onNavigate={onNavigate} />
+          : <DashboardActions onNavigate={onNavigate} />}
       </>}
       {authError?.operation === 'logout' && <Text accessibilityRole="alert" style={styles.errorTitle}>
         Não foi possível sair. Tente novamente no botão Sair.
@@ -159,35 +118,16 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 36, backgroundColor: colors.background, flexGrow: 1 },
-  body: { gap: 16, width: '100%', maxWidth: 900, alignSelf: 'center' },
+  body: { gap: 24, width: '100%', maxWidth: 720, alignSelf: 'center' },
+  introduction: { gap: 8 },
   title: { fontSize: 26, fontWeight: '700', color: colors.text },
   heading: { fontSize: 18, fontWeight: '600', color: colors.text },
   subtitle: { fontSize: 14, lineHeight: 21, color: colors.muted, flexShrink: 1 },
   copy: { fontSize: 16, lineHeight: 24, color: colors.text },
-  period: { fontSize: 14, lineHeight: 21, color: colors.muted },
-  card: { padding: 18, gap: 8, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  label: { fontSize: 16, color: colors.text, fontWeight: '600' },
-  balance: { fontSize: 30, fontWeight: '700', color: colors.primary, fontVariant: ['tabular-nums'], flexShrink: 1 },
-  totals: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  total: { flexGrow: 1, flexBasis: 150, minWidth: 0 },
-  amount: { fontSize: 22, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  income: { color: colors.primary },
-  expense: { color: '#B42318' },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   updateRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' },
   updateStatus: { flexDirection: 'row', gap: 8, alignItems: 'center', flexGrow: 1, flexBasis: 180 },
   notice: { padding: 18, gap: 12, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   errorTitle: { color: '#B42318', fontSize: 18, fontWeight: '600', lineHeight: 26 },
-  sectionHeader: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  section: { fontSize: 20, fontWeight: '700', color: colors.text, flexShrink: 1 },
-  list: { backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 16 },
-  transaction: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border, alignItems: 'center' },
-  transactionDescription: { flexGrow: 1, flexShrink: 1, flexBasis: 160, gap: 4, minWidth: 0 },
-  description: { fontSize: 16, fontWeight: '600', color: colors.text },
-  transactionAmount: { fontSize: 17, fontWeight: '600', fontVariant: ['tabular-nums'], textAlign: 'right', flexShrink: 1 },
-  stacked: { flexDirection: 'column', alignItems: 'stretch', flexWrap: 'nowrap' },
-  stackedBasis: { flexBasis: 'auto' },
-  stackedAmount: { textAlign: 'left' },
   button: { minHeight: 48, minWidth: 48, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   secondaryButton: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', textAlign: 'center' },
